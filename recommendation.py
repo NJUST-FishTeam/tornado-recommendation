@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import MySQLdb
 import numpy as np
+import json
 
 
 class status():
@@ -12,7 +13,7 @@ class status():
         self.problem_id = item[2]
         self.result = item[3]
         self.memory = item[4]
-        self.time = item[5]
+        self.time_run = item[5]
         self.language = item[6]
         self.code_len = item[7]
         self.time = item[8]
@@ -36,12 +37,18 @@ class rmd(object):
         )
         self.PROBLEM_MAP = {}
         self.MYSQLCUR = self.sqlcon.cursor()
-        sql = "select * from OJ_data.problem_rating where repo = 'Pku'"
+        sql = "select * from OJ_data.problem_info where repo = 'Pku'"
         self.MYSQLCUR.execute(sql)
         for record in self.MYSQLCUR.fetchall():
-            print record[0]
+            problem_ins = problem()
+            problem_ins.vec = map(float, json.loads(record[3]))
+            problem_ins.rating = float(record[2])
+            self.PROBLEM_MAP[record[1]] = problem_ins
 
-    def cal_elo(ra, rb, res):
+    def get_prating(self, pid):
+        return self.PROBLEM_MAP[pid].rating
+
+    def cal_elo(self, ra, rb, res):
         EA = 1 / (1 + 10 ** ((rb - ra) / 400.0))
         EB = 1 / (1 + 10 ** ((ra - rb) / 400.0))
         KA = KB = SA = SB = 0
@@ -92,7 +99,39 @@ class rmd(object):
                 )
         return rating, ac_arr
 
-    def cal_cosin(veca, vecb):
+    def get_user_info(self, username):
+        sql = "select * from poj_data where User = '%s' and Result != 'Compile Error'"
+        self.MYSQLCUR.execute(sql % username)
+        rating = 1500.0
+        black_hole = 1500
+        ac_arr = []
+        rating_arr = []
+        for item in self.MYSQLCUR.fetchall():
+            sta = status(item)
+            rating_flag = False
+            if sta.result == 'Accepted' and sta.problem_id not in ac_arr:
+                ac_arr.append(sta.problem_id)
+                rating, black_hole = self.cal_elo(
+                    rating,
+                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    True
+                )
+                rating_flag = True
+            elif sta.result != 'Accepted' and sta.problem_id not in ac_arr:
+                rating, black_hole = self.cal_elo(
+                    rating,
+                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    False
+                )
+                rating_flag = True
+            if rating_flag:
+                rating_arr.append([rating, str(sta.time)])
+        ac_rating_arr = []
+        for item in ac_arr:
+            ac_rating_arr.append([item, self.PROBLEM_MAP[item].rating])
+        return rating, ac_rating_arr, rating_arr
+
+    def cal_cosin(self, veca, vecb):
         x = np.array(veca)
         y = np.array(vecb)
         lx = np.sqrt(x.dot(x))
@@ -139,6 +178,9 @@ class rmd(object):
         )
         return ans
 
+    def close_con(self):
+        self.sqlcon.close()
+
 if __name__ == '__main__':
     rmd_sys = rmd(
         MySQL_info={
@@ -149,3 +191,4 @@ if __name__ == '__main__':
             "charset": "utf8"
         },
     )
+    print rmd_sys.get_user_info('njust_yz')[1]
