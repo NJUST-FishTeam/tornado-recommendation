@@ -36,6 +36,9 @@ class POJ_fetcher(object):
         self.fileds = ['RunID','User','Problem','Result','Memory','Time','Language','Code_Length','Submit_Time']
         self.quiet = quiet
 
+    def close_con(self):
+        self.con.close()
+
     def create_table(self):
         cu = self.con.cursor()
         cu.execute('''CREATE TABLE `poj_data` (

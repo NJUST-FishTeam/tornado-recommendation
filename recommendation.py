@@ -48,6 +48,15 @@ class rmd(object):
     def get_prating(self, pid):
         return self.PROBLEM_MAP[pid].rating
 
+    def get_prating_all(self):
+        prating_ret = []
+        for k in self.PROBLEM_MAP:
+            prating_ret.append({
+                'ID': k,
+                'level': int(self.PROBLEM_MAP[k].rating)
+            })
+        return prating_ret
+
     def cal_elo(self, ra, rb, res):
         EA = 1 / (1 + 10 ** ((rb - ra) / 400.0))
         EB = 1 / (1 + 10 ** ((ra - rb) / 400.0))
@@ -125,11 +134,24 @@ class rmd(object):
                 )
                 rating_flag = True
             if rating_flag:
-                rating_arr.append([rating, str(sta.time)])
+                rating_arr.append({
+                    'Rating': rating,
+                    'date': str(sta.time)
+                })
         ac_rating_arr = []
         for item in ac_arr:
             ac_rating_arr.append([item, self.PROBLEM_MAP[item].rating])
         return rating, ac_rating_arr, rating_arr
+
+    def get_user_info_group(self, group):
+        ret_data = []
+        for item in group:
+            rating, ac_arr, rating_arr = self.get_user_info(item)
+            ret_data.append({
+                'name': item,
+                'values': rating_arr
+            })
+        return ret_data
 
     def cal_cosin(self, veca, vecb):
         x = np.array(veca)
@@ -191,4 +213,4 @@ if __name__ == '__main__':
             "charset": "utf8"
         },
     )
-    print rmd_sys.get_user_info('njust_yz')[1]
+    print rmd_sys.get_prating_all()
