@@ -5,6 +5,7 @@ import tornado.web
 import datetime
 import time
 import json
+import requests
 from tornado.ioloop import PeriodicCallback
 from recommendation import rmd
 from POJ_fetch_mysql import POJ_fetcher as pspider
@@ -35,6 +36,7 @@ class RmdByUserHandler(tornado.web.RequestHandler):
 class RmdByProHandler(tornado.web.RequestHandler):
     def get(self, pid):
         rmd_sys = rmd(MySQL_info)
+        print MySQL_info
         self.write(json.dumps(rmd_sys.rmd_by_problem(int(pid))[:10]))
         rmd_sys.close_con()
 
@@ -98,13 +100,7 @@ application = tornado.web.Application([
 
 def fetch():
     fetcher = pspider(
-        MySQL_info={
-            "host": "localhost",
-            "user": "root",
-            "passwd": "199528",
-            "db": "OJ_data",
-            "charset": "utf8"
-        },
+        MySQL_info=MySQL_info,
         quiet=True
     )
     logging("Poj spider Start!", 0)
@@ -113,6 +109,12 @@ def fetch():
 
 
 if __name__ == "__main__":
+    mysql_setting = requests.get(
+            'http://192.168.33.10:8009/services/mysql-01/configures/production/').json()['data']
+    # print mysql_setting
+    MySQL_info["host"] = mysql_setting["HOST"]
+    MySQL_info["user"] = mysql_setting["USER"]
+    MySQL_info["passwd"] = str(mysql_setting["PASSWORD"])
     application.listen(8888)
     pc = PeriodicCallback(fetch, 1000 * 60 * 60)
     pc.start()
