@@ -8,6 +8,15 @@ import time
 import sys
 
 
+MySQL_info = {
+    "host": "localhost",
+    "user": "root",
+    "passwd": "199528",
+    "db": "OJ_data",
+    "charset": "utf8"
+}
+
+
 class POJ_fetcher(object):
     """docstring for POJ_fetcher"""
     def __init__(self, arg=None, MySQL_info=None, quiet=False):
@@ -171,14 +180,14 @@ class POJ_fetcher(object):
             time.sleep(0.5)
 
 if __name__ == '__main__':
+    mysql_setting = requests.get(
+            'http://192.168.33.10:8009/services/mysql-01/configures/production/').json()['data']
+    # print mysql_setting
+    MySQL_info["host"] = mysql_setting["HOST"]
+    MySQL_info["user"] = mysql_setting["USER"]
+    MySQL_info["passwd"] = str(mysql_setting["PASSWORD"])
     fetcher = POJ_fetcher(
-        MySQL_info={
-            "host": "localhost",
-            "user": "root",
-            "passwd": "199528",
-            "db": "OJ_data",
-            "charset": "utf8"
-        },
+        MySQL_info=MySQL_info,
         quiet=True
     )
     fetcher.main(None, None, datetime.datetime.today())
