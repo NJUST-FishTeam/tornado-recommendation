@@ -62,11 +62,11 @@ class rmd(object):
         EB = 1 / (1 + 10 ** ((ra - rb) / 400.0))
         KA = KB = SA = SB = 0
         if ra > 2400:
-            KA = 10
+            KA = 3
         elif ra > 1800:
-            KA = 15
+            KA = 6
         else:
-            KA = 20
+            KA = 9
         if rb > 2400 or rb < 600:
             KB = 10
         elif rb > 1900 or rb < 1100:
@@ -80,7 +80,7 @@ class rmd(object):
         else:
             SA = 0
             SB = 1
-            factor = 0.10
+            factor = 0.05
         RA = ra + KA * (SA - EA) * factor
         RB = rb + KB * (SB - EB)
         return RA, RB
@@ -146,9 +146,9 @@ class rmd(object):
     def get_user_info_group(self, group):
         ret_data = []
         for item in group:
-            rating, ac_arr, rating_arr = self.get_user_info(item)
+            rating, ac_arr, rating_arr = self.get_user_info(item[1])
             ret_data.append({
-                'name': item,
+                'name': item[0],
                 'values': rating_arr
             })
         return ret_data
