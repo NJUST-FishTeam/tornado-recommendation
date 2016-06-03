@@ -110,7 +110,7 @@ def fetch():
 
 if __name__ == "__main__":
     mysql_setting = requests.get(
-            'http://192.168.33.10:8009/services/mysql-01/configures/production/').json()['data']
+            'http://etcc.in.njoj.org:8009/services/mysql-01/configures/production/').json()['data']
     # print mysql_setting
     MySQL_info["host"] = mysql_setting["HOST"]
     MySQL_info["user"] = mysql_setting["USER"]

@@ -64,9 +64,9 @@ class rmd(object):
         if ra > 2400:
             KA = 10
         elif ra > 1800:
-            KA = 20
+            KA = 15
         else:
-            KA = 40
+            KA = 20
         if rb > 2400 or rb < 600:
             KB = 10
         elif rb > 1900 or rb < 1100:
@@ -80,7 +80,7 @@ class rmd(object):
         else:
             SA = 0
             SB = 1
-            factor = 0.20
+            factor = 0.10
         RA = ra + KA * (SA - EA) * factor
         RB = rb + KB * (SB - EB)
         return RA, RB
