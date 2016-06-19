@@ -9,6 +9,7 @@ import requests
 from tornado.ioloop import PeriodicCallback
 from recommendation import rmd
 from POJ_fetch_mysql import POJ_fetcher as pspider
+from HDU_fetch_mysql import HDU_fetcher as hspider
 
 MySQL_info = {
     "host": "localhost",
@@ -27,8 +28,9 @@ def logging(msg, lv):
 
 
 class RmdByUserHandler(tornado.web.RequestHandler):
-    def get(self, username):
+    def get(self):
         rmd_sys = rmd(MySQL_info)
+        username = json.loads(self.get_argument('username'))
         self.write(json.dumps(rmd_sys.rmd_by_user(username)[:10]))
         rmd_sys.close_con()
 
@@ -36,7 +38,6 @@ class RmdByUserHandler(tornado.web.RequestHandler):
 class RmdByProHandler(tornado.web.RequestHandler):
     def get(self, pid):
         rmd_sys = rmd(MySQL_info)
-        print MySQL_info
         self.write(json.dumps(rmd_sys.rmd_by_problem(int(pid))[:10]))
         rmd_sys.close_con()
 
@@ -80,7 +81,6 @@ class UserInfoHandler(tornado.web.RequestHandler):
 
     def post(self):
         rmd_sys = rmd(MySQL_info)
-        print self.get_argument('group')
         group = json.loads(self.get_argument('group'))
         self.write(json.dumps(rmd_sys.get_user_info_group(group)))
         rmd_sys.close_con()
@@ -88,7 +88,7 @@ class UserInfoHandler(tornado.web.RequestHandler):
 
 application = tornado.web.Application([
     (r"/", MainHandler),
-    (r"/Recommendation/user/(.*)/", RmdByUserHandler),
+    (r"/Recommendation/user/", RmdByUserHandler),
     (r"/Recommendation/problem/Pku/(.*)/", RmdByProHandler),
     (r"/UserRating/(.*)/", UserRatingHandler),
     (r"/ProblemRating/(.*)/", ProRatingHandler),
@@ -106,6 +106,13 @@ def fetch():
     logging("Poj spider Start!", 0)
     fetcher.main(None, None, datetime.datetime.today())
     logging("Poj spider End!", 0)
+    fetcher = hspider(
+        MySQL_info=MySQL_info,
+        quiet=True
+    )
+    logging("Hdu spider Start!", 0)
+    fetcher.main(None, None, datetime.datetime.today())
+    logging("Hdu spider End!", 0)
 
 
 if __name__ == "__main__":

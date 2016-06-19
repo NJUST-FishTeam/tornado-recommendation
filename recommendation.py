@@ -35,26 +35,39 @@ class rmd(object):
             db=MySQL_info["db"],
             charset=MySQL_info["charset"]
         )
+        self.CE_STR = {
+            'Pku': 'Compile Error',
+            'Hdu': 'Compilation Error'
+        }
+        self.DB_STR = {
+            'Pku': 'poj',
+            'Hdu': 'hdu'
+        }
+        self.REPO_SET = ['Pku', 'Hdu']
         self.PROBLEM_MAP = {}
+        for item in self.REPO_SET:
+            self.PROBLEM_MAP[item] = {}
         self.MYSQLCUR = self.sqlcon.cursor()
-        sql = "select * from OJ_data.problem_info where repo = 'Pku'"
+        sql = "select * from OJ_data.problem_info"
         self.MYSQLCUR.execute(sql)
         for record in self.MYSQLCUR.fetchall():
             problem_ins = problem()
             problem_ins.vec = map(float, json.loads(record[3]))
             problem_ins.rating = float(record[2])
-            self.PROBLEM_MAP[record[1]] = problem_ins
+            self.PROBLEM_MAP[record[0]][record[1]] = problem_ins
 
-    def get_prating(self, pid):
-        return self.PROBLEM_MAP[pid].rating
+    def get_prating(self, repo, pid):
+        return self.PROBLEM_MAP[repo][pid].rating
 
     def get_prating_all(self):
         prating_ret = []
-        for k in self.PROBLEM_MAP:
-            prating_ret.append({
-                'ID': k,
-                'level': int(self.PROBLEM_MAP[k].rating)
-            })
+        for item in self.REPO_SET:
+            for k in self.PROBLEM_MAP[item]:
+                prating_ret.append({
+                    'Repo': item,
+                    'ID': k,
+                    'level': int(self.PROBLEM_MAP[item][k].rating)
+                })
         return prating_ret
 
     def cal_elo(self, ra, rb, res):
@@ -85,9 +98,9 @@ class rmd(object):
         RB = rb + KB * (SB - EB)
         return RA, RB
 
-    def get_elo(self, username):
-        sql = "select * from poj_data where User = '%s' and Result != 'Compile Error'"
-        self.MYSQLCUR.execute(sql % username)
+    def get_elo(self, repo, username):
+        sql = "select * from %s_data where User = '%s' and Result != '%s'"
+        self.MYSQLCUR.execute(sql % (self.DB_STR[repo], username, self.CE_STR[repo]))
         rating = 1500.0
         black_hole = 1500
         ac_arr = []
@@ -97,20 +110,20 @@ class rmd(object):
                 ac_arr.append(sta.problem_id)
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
                     True
                 )
             elif sta.result != 'Accepted' and sta.problem_id not in ac_arr:
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
                     False
                 )
         return rating, ac_arr
 
-    def get_user_info(self, username):
-        sql = "select * from poj_data where User = '%s' and Result != 'Compile Error'"
-        self.MYSQLCUR.execute(sql % username)
+    def get_user_info(self, repo, username):
+        sql = "select * from %s_data where User = '%s' and Result != '%s'"
+        self.MYSQLCUR.execute(sql % (self.DB_STR[repo], username, self.CE_STR[repo]))
         rating = 1500.0
         black_hole = 1500
         ac_arr = []
@@ -122,14 +135,14 @@ class rmd(object):
                 ac_arr.append(sta.problem_id)
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
                     True
                 )
                 rating_flag = True
             elif sta.result != 'Accepted' and sta.problem_id not in ac_arr:
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[sta.problem_id].rating,
+                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
                     False
                 )
                 rating_flag = True
@@ -143,10 +156,10 @@ class rmd(object):
             ac_rating_arr.append([item, self.PROBLEM_MAP[item].rating])
         return rating, ac_rating_arr, rating_arr
 
-    def get_user_info_group(self, group):
+    def get_user_info_group(self, repo, group):
         ret_data = []
         for item in group:
-            rating, ac_arr, rating_arr = self.get_user_info(item[1])
+            rating, ac_arr, rating_arr = self.get_user_info(repo, item[1])
             ret_data.append({
                 'name': item[0],
                 'values': rating_arr
@@ -160,44 +173,52 @@ class rmd(object):
         ly = np.sqrt(y.dot(y))
         return float(x.dot(y) / (lx * ly))
 
-    def rmd_by_problem(self, problem_id):
-        if len(self.PROBLEM_MAP[problem_id].vec) != 200:
+    def rmd_by_problem(self, repo, problem_id):
+        if len(self.PROBLEM_MAP[repo][problem_id].vec) != 200:
             return []
         ans = []
-        for key in self.PROBLEM_MAP:
-            if key != problem_id and len(self.PROBLEM_MAP[key].vec) == 200:
+        for key in self.PROBLEM_MAP[repo]:
+            if key != problem_id and len(self.PROBLEM_MAP[repo][key].vec) == 200:
                 cos_dis = self.cal_cosin(
-                    self.PROBLEM_MAP[problem_id].vec,
-                    self.PROBLEM_MAP[key].vec
+                    self.PROBLEM_MAP[repo][problem_id].vec,
+                    self.PROBLEM_MAP[repo][key].vec
                 )
                 ans.append((key, cos_dis))
         ans = sorted(ans, cmp=lambda x, y: cmp(y[1], x[1]))
         return ans
 
     def rmd_by_user(self, username):
-        ac_sql = "select * from poj_data where User = '%s' \
-            order by RunId desc limit 10"
-        self.MYSQLCUR.execute(ac_sql % username)
-        problem_set = set()
-        for item in self.MYSQLCUR.fetchall():
-            sta = status(item)
-            problem_set.add(sta.problem_id)
-        ans_set = set()
-        for item in problem_set:
-            rmd_res = self.rmd_by_problem(item)
-            for items in rmd_res:
-                ans_set.add(items)
-        # print ans_set
         ans = []
-        user_elo, ac_arr = self.get_elo(username)
-        for item in ans_set:
-            if item[0] not in ac_arr:
-                rl_err = 1 - abs(user_elo - self.PROBLEM_MAP[item[0]].rating) / user_elo
-                ans.append((item[0], item[1] * rl_err))
-        ans = sorted(
-            ans,
-            cmp=lambda x, y: cmp(y[1], x[1])
-        )
+        for items in username:
+            repo = items['repo']
+            nickname = items['username']
+            ac_sql = "select * from %s_data where User = '%s' \
+                order by RunId desc limit 10"
+            self.MYSQLCUR.execute(ac_sql % (self.DB_STR[repo], nickname))
+            problem_set = set()
+            for item in self.MYSQLCUR.fetchall():
+                sta = status(item)
+                problem_set.add(sta.problem_id)
+            ans_set = set()
+            for item in problem_set:
+                rmd_res = self.rmd_by_problem(repo, item)
+                for itemss in rmd_res:
+                    ans_set.add(itemss)
+            # print ans_set
+            tans = []
+            user_elo, ac_arr = self.get_elo(repo, nickname)
+            for item in ans_set:
+                if item[0] not in ac_arr:
+                    rl_err = 1 - abs(user_elo - self.PROBLEM_MAP[repo][item[0]].rating) / user_elo
+                    tans.append((item[0], item[1] * rl_err))
+            tans = sorted(
+                tans,
+                cmp=lambda x, y: cmp(y[1], x[1])
+            )
+            ans.append({
+                'repo': repo,
+                'rmd': tans[:10]
+            })
         return ans
 
     def close_con(self):
