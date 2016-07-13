@@ -82,7 +82,8 @@ class UserInfoHandler(tornado.web.RequestHandler):
     def post(self):
         rmd_sys = rmd(MySQL_info)
         group = json.loads(self.get_argument('group'))
-        self.write(json.dumps(rmd_sys.get_user_info_group(group)))
+        repo = self.get_argument('repo')
+        self.write(json.dumps(rmd_sys.get_user_info_group(repo, group)))
         rmd_sys.close_con()
 
 

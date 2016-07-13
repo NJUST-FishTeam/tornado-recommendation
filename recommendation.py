@@ -131,18 +131,21 @@ class rmd(object):
         for item in self.MYSQLCUR.fetchall():
             sta = status(item)
             rating_flag = False
+            pm_rating = 1500
+            if self.PROBLEM_MAP[repo].get(sta.problem_id):
+                pm_rating = self.PROBLEM_MAP[repo][sta.problem_id].rating
             if sta.result == 'Accepted' and sta.problem_id not in ac_arr:
                 ac_arr.append(sta.problem_id)
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
+                    pm_rating,
                     True
                 )
                 rating_flag = True
             elif sta.result != 'Accepted' and sta.problem_id not in ac_arr:
                 rating, black_hole = self.cal_elo(
                     rating,
-                    self.PROBLEM_MAP[repo][sta.problem_id].rating,
+                    pm_rating,
                     False
                 )
                 rating_flag = True
@@ -153,7 +156,10 @@ class rmd(object):
                 })
         ac_rating_arr = []
         for item in ac_arr:
-            ac_rating_arr.append([item, self.PROBLEM_MAP[item].rating])
+            pm_rating = 1500
+            if self.PROBLEM_MAP[repo].get(sta.problem_id):
+                pm_rating = self.PROBLEM_MAP[repo][sta.problem_id].rating
+            ac_rating_arr.append([item, pm_rating])
         return rating, ac_rating_arr, rating_arr
 
     def get_user_info_group(self, repo, group):
